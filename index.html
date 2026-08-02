@@ -350,15 +350,18 @@
         const rawAppId = typeof __app_id !== 'undefined' ? __app_id : 'classroom-score-app';
         // 【修正】確保 appId 不包含斜線等會破壞 Firestore 路徑結構的字元
         const appId = rawAppId.replace(/[^a-zA-Z0-9_-]/g, '_'); 
-        let firebaseConfig = null;
         
-        if (typeof __firebase_config !== 'undefined') {
-            try {
-                firebaseConfig = JSON.parse(__firebase_config);
-            } catch (e) {
-                console.warn("Firebase config parsing error (使用預設本地模式)", e);
-            }
-        }
+        // ▼▼▼▼▼ 請將這裡替換成您自己的 Firebase 設定 ▼▼▼▼▼
+        let firebaseConfig = {
+            apiKey: "AIzaSyD45E-XsR0T0jgzyYOAtSIWX4cewQPiG6o",
+  authDomain: "win-lose-ff384.firebaseapp.com",
+  projectId: "win-lose-ff384",
+  storageBucket: "win-lose-ff384.firebasestorage.app",
+  messagingSenderId: "469689717931",
+  appId: "1:469689717931:web:b283178fd273db9f6bd3ee",
+  measurementId: "G-MGMESLCT28"
+        };
+        // ▲▲▲▲▲ Firebase 設定結束 ▲▲▲▲▲
 
         // 系統變數
         let app, db, auth, userId;
