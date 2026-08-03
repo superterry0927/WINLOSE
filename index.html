@@ -2,7 +2,8 @@
 <html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- 加入 viewport 鎖定，防止移動端縮放 -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>班級分組加扣分系統</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
@@ -11,84 +12,112 @@
         
         body {
             font-family: 'Noto Sans TC', sans-serif;
-            background-color: #f0fdfa; /* Tailwind teal-50 */
-            color: #111827; /* Tailwind gray-900 */
+            background-color: #f0fdfa; 
+            color: #111827; 
             margin: 0;
             overflow-x: hidden;
         }
 
-        /* 自訂隱藏捲軸但可滾動 */
-        .no-scrollbar::-webkit-scrollbar {
-            display: none;
-        }
-        .no-scrollbar {
-            -ms-overflow-style: none;
-            scrollbar-width: none;
-        }
+        /* 隱藏捲軸 */
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
 
-        /* 電視展示端專用樣式 */
+        /* ==================== 電視端專用強制滿版樣式 (鎖定 16:9 比例) ==================== */
         .display-mode {
             background: linear-gradient(135deg, #e0f2fe 0%, #dbeafe 100%);
+            width: 100vw;
             height: 100vh;
+            overflow: hidden; /* 絕對禁止出現捲軸 */
+            position: relative;
+        }
+
+        .tv-container {
             display: flex;
             flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            width: 100vw;
+            height: 100vh;
+            padding: 4vh 2vw; /* 留白防切邊 */
+            box-sizing: border-box;
+            gap: 6vh; /* 上下排之間的間距 */
         }
 
-        .group-card {
+        .tv-row {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            width: 100%;
+            height: 40vh; /* 固定卡片高度比例 */
+            gap: 4vw; /* 左右卡片間距 */
+        }
+
+        .tv-card {
             background: white;
-            border-radius: 2rem;
-            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
-            border: 8px dashed #cbd5e1; /* 對應圖片的虛線邊框 */
-            transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            border-radius: 4vh; /* 圓角依賴螢幕高度 */
+            border: 1vh dashed #cbd5e1;
+            width: 26vw; /* 3張卡片約佔 78% 寬度，完美適應 16:9 */
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
             position: relative;
-            overflow: hidden;
+            box-shadow: 0 2vh 4vh -1vh rgba(0, 0, 0, 0.15);
+            transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
         }
 
-        /* 第一名皇冠動畫 */
+        /* 電視端字體大小全部使用 vh (Viewport Height) 確保大尺寸不跑版 */
+        .tv-card .group-num { font-size: 8vh; font-family: impact, sans-serif; color: #d1d5db; line-height: 1; }
+        .tv-card .group-title { font-size: 4vh; font-weight: bold; color: #6b7280; margin: 1vh 0; }
+        .tv-card .score-text { font-size: 22vh; font-weight: 900; line-height: 1; }
+
+        /* 皇冠動畫與第一名樣式 */
         @keyframes float {
             0% { transform: translateY(0px) rotate(-10deg); }
-            50% { transform: translateY(-10px) rotate(10deg); }
+            50% { transform: translateY(-2vh) rotate(10deg); }
             100% { transform: translateY(0px) rotate(-10deg); }
         }
-        .crown {
+        .tv-card .crown {
             position: absolute;
-            top: -15px;
-            left: -15px;
-            font-size: 4rem;
+            top: -3vh;
+            left: -2vw;
+            font-size: 8vh;
             color: #fbbf24;
             animation: float 3s ease-in-out infinite;
-            filter: drop-shadow(0 4px 3px rgb(0 0 0 / 0.1));
-            display: none; /* 預設隱藏，由 JS 控制顯示 */
+            filter: drop-shadow(0 1vh 1vh rgba(0,0,0,0.2));
+            display: none; 
         }
-        .is-first .crown {
+        .tv-card.is-first {
+            border-color: #fbbf24; 
+            box-shadow: 0 0 6vh rgba(251, 191, 36, 0.5);
+            transform: scale(1.02);
+        }
+        .tv-card.is-first .crown {
             display: block;
         }
-        
-        .is-first {
-            border-color: #fbbf24; /* 金色邊框 */
-            box-shadow: 0 0 30px rgba(251, 191, 36, 0.5);
-        }
 
-        /* 分數變化動畫 */
+        /* 分數變化跳動動畫 */
         @keyframes pop {
             0% { transform: scale(1); }
             50% { transform: scale(1.2); color: #ef4444; }
             100% { transform: scale(1); }
         }
-        .score-changed {
-            animation: pop 0.5s ease-out;
-        }
+        .score-changed { animation: pop 0.5s ease-out; }
 
-        /* 模態框背景模糊 */
-        .modal-backdrop {
-            backdrop-filter: blur(4px);
-        }
+        .modal-backdrop { backdrop-filter: blur(4px); }
     </style>
 </head>
 <body class="antialiased">
 
-    <!-- 導覽列 (只有非電視展示端才顯示) -->
-    <nav id="navbar" class="bg-white shadow-md sticky top-0 z-50">
+    <!-- 左下角連線狀態指示燈 -->
+    <div class="fixed bottom-4 left-4 z-50 bg-white/90 backdrop-blur px-4 py-2 rounded-full shadow-lg flex items-center gap-3 border border-gray-100">
+        <div id="status-dot" class="w-3 h-3 rounded-full bg-gray-400 animate-pulse"></div>
+        <span id="status-text" class="text-sm font-bold text-gray-600 tracking-wide">連線初始化中...</span>
+    </div>
+
+    <!-- 導覽列 -->
+    <nav id="navbar" class="bg-white shadow-md sticky top-0 z-40 relative">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div class="flex justify-between h-16">
                 <div class="flex items-center">
@@ -115,20 +144,16 @@
 
         <!-- ==================== 1. 老師操作端 (Teacher View) ==================== -->
         <div id="view-teacher" class="view-section hidden max-w-5xl mx-auto p-4 md:p-6 pb-24">
-            
             <div class="bg-white rounded-2xl shadow-sm p-4 mb-6 flex justify-between items-center border border-teal-100">
-                <div class="flex items-center space-x-3">
-                    <label for="teacher-class-select" class="font-bold text-gray-700">目前班級：</label>
-                    <select id="teacher-class-select" class="bg-teal-50 border border-teal-200 text-teal-800 rounded-lg focus:ring-teal-500 focus:border-teal-500 block p-2.5 font-bold shadow-inner outline-none">
+                <div class="flex items-center space-x-3 w-full max-w-md">
+                    <label for="teacher-class-select" class="font-bold text-gray-700 whitespace-nowrap">目前班級：</label>
+                    <select id="teacher-class-select" class="bg-teal-50 border border-teal-200 text-teal-800 rounded-lg focus:ring-teal-500 focus:border-teal-500 block w-full p-2.5 font-bold shadow-inner outline-none text-lg">
                         <!-- 選項由 JS 動態產生 -->
                     </select>
                 </div>
-                <div class="text-sm text-gray-500">
-                    <i class="fa-solid fa-circle-check text-green-500 mr-1"></i> 即時同步中
-                </div>
             </div>
 
-            <!-- 分組卡片列表 (操作端) -->
+            <!-- 分組卡片列表 (操作端維持原本的小排版) -->
             <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
                 <!-- 第一組 -->
                 <div onclick="openScoreModal(1)" class="bg-white rounded-2xl shadow hover:shadow-lg cursor-pointer transform hover:-translate-y-1 transition duration-200 border-2 border-transparent hover:border-teal-400 p-6 flex flex-col items-center justify-center h-48 relative overflow-hidden">
@@ -162,99 +187,84 @@
                 </div>
             </div>
 
-            <!-- 提示文字 -->
             <div class="mt-8 text-center text-gray-400 text-sm">
                 <i class="fa-solid fa-hand-pointer mb-1 text-xl block"></i>
                 點擊上方組別卡片進行加扣分
             </div>
         </div>
 
-        <!-- ==================== 2. 電視展示端 (Display View) ==================== -->
-        <div id="view-display" class="view-section hidden display-mode relative">
+        <!-- ==================== 2. 電視展示端 (Display View 絕對滿版) ==================== -->
+        <div id="view-display" class="view-section hidden display-mode">
             
-            <!-- 隱藏的班級選擇器，滑鼠移至頂部時顯示，方便切換 -->
-            <div class="absolute top-0 w-full flex justify-center opacity-0 hover:opacity-100 transition-opacity duration-300 z-10 pt-2">
-                <select id="display-class-select" class="bg-white/80 backdrop-blur border-2 border-white text-gray-800 rounded-full focus:ring-4 focus:ring-blue-300 block p-3 text-2xl font-bold shadow-lg outline-none cursor-pointer">
+            <!-- 隱藏的班級顯示器 (移到頂部 hover 顯示) -->
+            <div class="absolute top-0 w-full flex justify-center opacity-0 hover:opacity-100 transition-opacity duration-300 z-10 pt-4">
+                <select id="display-class-select" class="bg-white/80 backdrop-blur border-2 border-white text-gray-800 rounded-full focus:ring-4 focus:ring-blue-300 block px-6 py-3 text-3xl font-bold shadow-lg outline-none cursor-pointer appearance-none text-center">
                     <!-- 選項由 JS 動態產生 -->
                 </select>
             </div>
 
-            <!-- 離開展示模式的按鈕 (隱藏於角落) -->
-            <button onclick="switchView('teacher')" class="absolute top-4 right-4 text-white/50 hover:text-white bg-black/20 hover:bg-black/40 rounded-full w-12 h-12 flex items-center justify-center transition z-20">
-                <i class="fa-solid fa-compress text-xl"></i>
+            <!-- 離開按鈕 -->
+            <button onclick="switchView('teacher')" class="absolute top-6 right-6 text-white bg-black/20 hover:bg-black/40 rounded-full w-16 h-16 flex items-center justify-center transition z-20 shadow-lg">
+                <i class="fa-solid fa-compress text-3xl"></i>
             </button>
 
-            <!-- 展示區主要內容 -->
-            <div class="flex-1 flex flex-col items-center justify-center p-8 gap-12 w-full h-full max-w-[1920px] mx-auto">
-                
-                <!-- 上排：1, 2, 3 組 (對應圖片) -->
-                <div class="flex flex-row justify-center w-full gap-8 lg:gap-16">
-                    <!-- Display 第 1 組 -->
-                    <div id="display-card-1" class="group-card w-1/3 max-w-sm flex flex-col items-center justify-center aspect-[3/4]">
+            <!-- 專為電視 16:9 設計的排版容器 -->
+            <div class="tv-container">
+                <!-- 第一排：第 1, 2, 3 組 -->
+                <div class="tv-row">
+                    <div id="display-card-1" class="tv-card">
                         <i class="fa-solid fa-crown crown"></i>
-                        <div class="text-[4rem] xl:text-[6rem] font-black text-gray-300 mb-4 tracking-tighter" style="font-family: impact, sans-serif;">1</div>
-                        <div class="text-3xl xl:text-4xl font-bold text-gray-500 mb-2">第一組</div>
-                        <div id="display-score-1" class="text-[8rem] xl:text-[12rem] font-black text-blue-600 leading-none score-text">0</div>
+                        <div class="group-num">1</div>
+                        <div class="group-title">第一組</div>
+                        <div id="display-score-1" class="score-text text-blue-500">0</div>
                     </div>
-                    <!-- Display 第 2 組 -->
-                    <div id="display-card-2" class="group-card w-1/3 max-w-sm flex flex-col items-center justify-center aspect-[3/4]">
+                    <div id="display-card-2" class="tv-card">
                         <i class="fa-solid fa-crown crown"></i>
-                        <div class="text-[4rem] xl:text-[6rem] font-black text-gray-300 mb-4 tracking-tighter" style="font-family: impact, sans-serif;">2</div>
-                        <div class="text-3xl xl:text-4xl font-bold text-gray-500 mb-2">第二組</div>
-                        <div id="display-score-2" class="text-[8rem] xl:text-[12rem] font-black text-green-600 leading-none score-text">0</div>
+                        <div class="group-num">2</div>
+                        <div class="group-title">第二組</div>
+                        <div id="display-score-2" class="score-text text-green-500">0</div>
                     </div>
-                    <!-- Display 第 3 組 -->
-                    <div id="display-card-3" class="group-card w-1/3 max-w-sm flex flex-col items-center justify-center aspect-[3/4]">
+                    <div id="display-card-3" class="tv-card">
                         <i class="fa-solid fa-crown crown"></i>
-                        <div class="text-[4rem] xl:text-[6rem] font-black text-gray-300 mb-4 tracking-tighter" style="font-family: impact, sans-serif;">3</div>
-                        <div class="text-3xl xl:text-4xl font-bold text-gray-500 mb-2">第三組</div>
-                        <div id="display-score-3" class="text-[8rem] xl:text-[12rem] font-black text-yellow-500 leading-none score-text">0</div>
+                        <div class="group-num">3</div>
+                        <div class="group-title">第三組</div>
+                        <div id="display-score-3" class="score-text text-yellow-500">0</div>
                     </div>
                 </div>
 
-                <!-- 下排：4, 5 組置中 (對應圖片) -->
-                <div class="flex flex-row justify-center w-full gap-8 lg:gap-16">
-                    <!-- Display 第 4 組 -->
-                    <div id="display-card-4" class="group-card w-1/3 max-w-sm flex flex-col items-center justify-center aspect-[3/4]">
+                <!-- 第二排：第 4, 5 組置中 -->
+                <div class="tv-row">
+                    <div id="display-card-4" class="tv-card">
                         <i class="fa-solid fa-crown crown"></i>
-                        <div class="text-[4rem] xl:text-[6rem] font-black text-gray-300 mb-4 tracking-tighter" style="font-family: impact, sans-serif;">4</div>
-                        <div class="text-3xl xl:text-4xl font-bold text-gray-500 mb-2">第四組</div>
-                        <div id="display-score-4" class="text-[8rem] xl:text-[12rem] font-black text-red-500 leading-none score-text">0</div>
+                        <div class="group-num">4</div>
+                        <div class="group-title">第四組</div>
+                        <div id="display-score-4" class="score-text text-red-500">0</div>
                     </div>
-                    <!-- Display 第 5 組 -->
-                    <div id="display-card-5" class="group-card w-1/3 max-w-sm flex flex-col items-center justify-center aspect-[3/4]">
+                    <div id="display-card-5" class="tv-card">
                         <i class="fa-solid fa-crown crown"></i>
-                        <div class="text-[4rem] xl:text-[6rem] font-black text-gray-300 mb-4 tracking-tighter" style="font-family: impact, sans-serif;">5</div>
-                        <div class="text-3xl xl:text-4xl font-bold text-gray-500 mb-2">第五組</div>
-                        <div id="display-score-5" class="text-[8rem] xl:text-[12rem] font-black text-purple-600 leading-none score-text">0</div>
+                        <div class="group-num">5</div>
+                        <div class="group-title">第五組</div>
+                        <div id="display-score-5" class="score-text text-purple-500">0</div>
                     </div>
                 </div>
-
             </div>
         </div>
 
         <!-- ==================== 3. 後台設定 (Admin View) ==================== -->
-        <div id="view-admin" class="view-section hidden max-w-4xl mx-auto p-4 md:p-6">
+        <div id="view-admin" class="view-section hidden max-w-4xl mx-auto p-4 md:p-6 pb-24">
             <h2 class="text-3xl font-black text-gray-800 mb-8 border-b-4 border-teal-400 inline-block pb-2">系統設定</h2>
 
             <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
-                
                 <!-- 班級管理區塊 -->
                 <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
                     <h3 class="text-xl font-bold text-teal-700 mb-4 flex items-center">
                         <i class="fa-solid fa-users mr-2"></i> 班級列表
                     </h3>
-                    
                     <div class="flex mb-4">
-                        <input type="text" id="new-class-name" placeholder="輸入新班級名稱..." class="flex-1 bg-gray-50 border border-gray-300 text-gray-900 rounded-l-lg focus:ring-teal-500 focus:border-teal-500 block p-2.5 outline-none">
-                        <button onclick="addClass()" class="bg-teal-500 hover:bg-teal-600 text-white font-bold py-2 px-4 rounded-r-lg transition">
-                            新增
-                        </button>
+                        <input type="text" id="new-class-name" placeholder="輸入新班級名稱..." class="flex-1 bg-gray-50 border border-gray-300 text-gray-900 rounded-l-lg focus:ring-teal-500 focus:border-teal-500 block p-2.5 outline-none font-bold">
+                        <button onclick="addClass()" class="bg-teal-500 hover:bg-teal-600 text-white font-bold py-2 px-4 rounded-r-lg transition">新增</button>
                     </div>
-
-                    <ul id="admin-class-list" class="space-y-2 max-h-[300px] overflow-y-auto no-scrollbar pr-2">
-                        <!-- 列表由 JS 產生 -->
-                    </ul>
+                    <ul id="admin-class-list" class="space-y-2 max-h-[300px] overflow-y-auto no-scrollbar pr-2"></ul>
                 </div>
 
                 <!-- 評分項目管理區塊 -->
@@ -262,31 +272,20 @@
                     <h3 class="text-xl font-bold text-blue-700 mb-4 flex items-center">
                         <i class="fa-solid fa-star mr-2"></i> 加扣分項目設定
                     </h3>
-                    
                     <div class="flex gap-2 mb-4">
-                        <input type="text" id="new-rule-name" placeholder="項目 (例: 發言)" class="flex-2 w-full bg-gray-50 border border-gray-300 text-gray-900 rounded-lg focus:ring-blue-500 focus:border-blue-500 block p-2.5 outline-none">
-                        <input type="number" id="new-rule-score" placeholder="分數" class="flex-1 w-24 bg-gray-50 border border-gray-300 text-gray-900 rounded-lg focus:ring-blue-500 focus:border-blue-500 block p-2.5 outline-none" value="1">
-                        <button onclick="addRule()" class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded-lg transition whitespace-nowrap">
-                            新增
-                        </button>
+                        <input type="text" id="new-rule-name" placeholder="項目名稱 (例: 發言)" class="flex-2 w-full bg-gray-50 border border-gray-300 text-gray-900 rounded-lg focus:ring-blue-500 focus:border-blue-500 block p-2.5 outline-none font-bold">
+                        <input type="number" id="new-rule-score" placeholder="分數" class="flex-1 w-24 bg-gray-50 border border-gray-300 text-gray-900 rounded-lg focus:ring-blue-500 focus:border-blue-500 block p-2.5 outline-none font-bold text-center" value="1">
+                        <button onclick="addRule()" class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded-lg transition whitespace-nowrap">新增</button>
                     </div>
-
-                    <ul id="admin-rule-list" class="space-y-2 max-h-[300px] overflow-y-auto no-scrollbar pr-2">
-                         <!-- 列表由 JS 產生 -->
-                    </ul>
+                    <ul id="admin-rule-list" class="space-y-2 max-h-[300px] overflow-y-auto no-scrollbar pr-2"></ul>
                 </div>
             </div>
             
             <div class="mt-8 bg-orange-50 p-6 rounded-2xl border border-orange-200">
-                 <h3 class="text-lg font-bold text-orange-800 mb-2"><i class="fa-solid fa-triangle-exclamation mr-2"></i>危險操作</h3>
-                 <p class="text-sm text-orange-700 mb-4">這將會清除目前選擇班級的所有分數，請謹慎操作。</p>
-                 <div class="flex items-center gap-4">
-                     <select id="reset-class-select" class="bg-white border border-orange-300 text-orange-900 rounded-lg focus:ring-orange-500 block p-2 outline-none">
-                         <!-- 選項由 JS 產生 -->
-                     </select>
-                     <button onclick="resetScores()" class="bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-6 rounded-lg transition shadow">
-                        分數歸零
-                     </button>
+                 <h3 class="text-lg font-bold text-orange-800 mb-2"><i class="fa-solid fa-triangle-exclamation mr-2"></i>分數歸零 (危險操作)</h3>
+                 <div class="flex items-center gap-4 mt-4">
+                     <select id="reset-class-select" class="bg-white border border-orange-300 text-orange-900 rounded-lg focus:ring-orange-500 block p-2 outline-none font-bold"></select>
+                     <button onclick="resetScores()" class="bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-6 rounded-lg transition shadow">歸零</button>
                  </div>
             </div>
         </div>
@@ -296,41 +295,33 @@
     <!-- ==================== 加扣分操作 Modal 視窗 ==================== -->
     <div id="score-modal" tabindex="-1" aria-hidden="true" class="fixed inset-0 z-[100] hidden flex justify-center items-end sm:items-center modal-backdrop">
         <div class="relative w-full max-w-md bg-white sm:rounded-3xl rounded-t-3xl shadow-2xl overflow-hidden transform transition-all duration-300 translate-y-full sm:translate-y-0" id="score-modal-content">
-            
-            <!-- Modal Header -->
             <div class="bg-gray-50 px-6 py-4 border-b border-gray-100 flex justify-between items-center">
                 <h3 class="text-2xl font-black text-gray-800" id="modal-title">
-                    為 第 <span id="modal-group-num" class="text-teal-600">X</span> 組 評分
+                    為 第 <span id="modal-group-num" class="text-teal-600 text-3xl">X</span> 組 評分
                 </h3>
-                <button type="button" onclick="closeScoreModal()" class="text-gray-400 hover:bg-gray-200 hover:text-gray-900 rounded-full text-sm p-2 ml-auto inline-flex items-center transition">
-                    <i class="fa-solid fa-xmark text-xl w-5 h-5 flex justify-center items-center"></i>
+                <button type="button" onclick="closeScoreModal()" class="text-gray-400 hover:bg-gray-200 hover:text-gray-900 rounded-full p-2 ml-auto inline-flex items-center transition">
+                    <i class="fa-solid fa-xmark text-2xl w-6 h-6 flex justify-center items-center"></i>
                 </button>
             </div>
-            
-            <!-- Modal Body (動態產生的評分按鈕) -->
             <div class="p-6">
-                <div id="modal-rules-container" class="grid grid-cols-2 gap-3 mb-6">
-                    <!-- 按鈕由 JS 產生 -->
-                </div>
-                
+                <div id="modal-rules-container" class="grid grid-cols-2 gap-3 mb-6"></div>
                 <div class="flex items-center gap-2 pt-4 border-t border-gray-100">
-                    <span class="font-bold text-gray-600">自訂：</span>
-                    <button onclick="submitScore(1)" class="flex-1 bg-gray-100 hover:bg-teal-100 text-teal-700 font-bold py-3 rounded-xl transition text-lg">+1</button>
-                    <button onclick="submitScore(-1)" class="flex-1 bg-gray-100 hover:bg-red-100 text-red-700 font-bold py-3 rounded-xl transition text-lg">-1</button>
+                    <span class="font-bold text-gray-600 whitespace-nowrap">自訂：</span>
+                    <button onclick="submitScore(1)" class="flex-1 bg-gray-100 hover:bg-teal-100 text-teal-700 font-black py-4 rounded-xl transition text-2xl">+1</button>
+                    <button onclick="submitScore(-1)" class="flex-1 bg-gray-100 hover:bg-red-100 text-red-700 font-black py-4 rounded-xl transition text-2xl">-1</button>
                 </div>
             </div>
         </div>
-        <!-- 點擊背景關閉 -->
         <div class="absolute inset-0 z-[-1]" onclick="closeScoreModal()"></div>
     </div>
 
-    <!-- ==================== 系統提示訊息 (Toast) ==================== -->
-    <div id="system-toast" class="fixed bottom-4 right-4 bg-orange-50 border-l-4 border-orange-500 text-orange-800 p-4 rounded-lg shadow-xl z-[9999] hidden transition-opacity duration-300 max-w-sm">
+    <!-- ==================== 錯誤提示 Toast ==================== -->
+    <div id="system-toast" class="fixed top-4 right-4 bg-orange-50 border-l-4 border-orange-500 text-orange-800 p-4 rounded-lg shadow-xl z-[9999] hidden transition-opacity duration-300 max-w-sm">
         <div class="flex items-start">
             <i class="fa-solid fa-triangle-exclamation mt-1 mr-3 text-orange-500"></i>
             <div>
-                <h4 class="font-bold text-orange-900">進入本地單機模式</h4>
-                <p class="text-sm mt-1">無法連線至雲端資料庫 (權限不足)。系統已切換為本機模式，您仍可操作體驗，但重新整理後資料將會重置。</p>
+                <h4 class="font-bold text-orange-900">連線出現問題</h4>
+                <p id="toast-message" class="text-sm mt-1">目前處於單機模式。請檢查 Firebase 設定或安全性規則是否正確。</p>
             </div>
             <button onclick="document.getElementById('system-toast').classList.add('hidden')" class="ml-4 text-orange-500 hover:text-orange-700 transition p-1">
                 <i class="fa-solid fa-xmark text-lg"></i>
@@ -338,22 +329,18 @@
         </div>
     </div>
 
-    <!-- ==================== Firebase & 邏輯腳本 ==================== -->
+    <!-- ==================== 邏輯腳本 ==================== -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, doc, getDoc, setDoc, onSnapshot, collection, getDocs, updateDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getFirestore, doc, getDoc, setDoc, onSnapshot, collection, getDocs, updateDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-        // ==========================================
-        // 1. 環境變數與全域狀態設定
-        // ==========================================
         const rawAppId = typeof __app_id !== 'undefined' ? __app_id : 'classroom-score-app';
-        // 【修正】確保 appId 不包含斜線等會破壞 Firestore 路徑結構的字元
         const appId = rawAppId.replace(/[^a-zA-Z0-9_-]/g, '_'); 
         
         // ▼▼▼▼▼ 請將這裡替換成您自己的 Firebase 設定 ▼▼▼▼▼
         let firebaseConfig = {
-            apiKey: "AIzaSyD45E-XsR0T0jgzyYOAtSIWX4cewQPiG6o",
+           apiKey: "AIzaSyD45E-XsR0T0jgzyYOAtSIWX4cewQPiG6o",
   authDomain: "win-lose-ff384.firebaseapp.com",
   projectId: "win-lose-ff384",
   storageBucket: "win-lose-ff384.firebasestorage.app",
@@ -363,73 +350,72 @@
         };
         // ▲▲▲▲▲ Firebase 設定結束 ▲▲▲▲▲
 
-        // 系統變數
         let app, db, auth, userId;
-        // 核心狀態：決定是否使用 Firebase (如果有設 Config 就用，否則降級為本地端)
-        let USE_LOCAL_STORAGE_FALLBACK = !firebaseConfig; 
+        let USE_LOCAL_STORAGE_FALLBACK = !firebaseConfig || firebaseConfig.apiKey.includes("請替換成"); 
         
-        // 預設資料結構 (當無 Firebase 或新開時使用)
         let localState = {
-            classes: [
-                { id: 'default_c1', name: '一年甲班' }
-            ],
+            classes: [ { id: 'default_c1', name: '一年甲班' } ],
             rules: [
                 { id: 'r1', name: '積極發言', score: 2 },
                 { id: 'r2', name: '團隊合作', score: 3 },
                 { id: 'r3', name: '干擾秩序', score: -1 },
                 { id: 'r4', name: '作業優良', score: 5 }
             ],
-            scores: {
-                // 'class_id': { 1: 0, 2: 5, ... }
-            }
+            scores: {}
         };
 
-        // UI 狀態
         let currentView = 'teacher';
         let selectedClassId = '';
         let targetGroupNum = null;
-        let unsubscribeScores = null; // 用來取消 Firebase 監聽
+        let unsubscribeScores = null; 
+        let unsubscribeActive = null;
 
-        // ==========================================
-        // 2. 系統初始化
-        // ==========================================
+        // 更新連線狀態 UI
+        function updateConnectionStatus(isConnected, message = '') {
+            const dot = document.getElementById('status-dot');
+            const txt = document.getElementById('status-text');
+            if(isConnected) {
+                dot.className = 'w-3 h-3 rounded-full bg-green-500 shadow-[0_0_8px_#22c55e]';
+                txt.innerText = 'Firebase 已連線';
+                txt.classList.replace('text-gray-600', 'text-green-700');
+                txt.classList.replace('text-red-700', 'text-green-700');
+            } else {
+                dot.className = 'w-3 h-3 rounded-full bg-red-500 shadow-[0_0_8px_#ef4444]';
+                txt.innerText = message || '單機模式 (未連線)';
+                txt.classList.replace('text-gray-600', 'text-red-700');
+                txt.classList.replace('text-green-700', 'text-red-700');
+            }
+        }
+
         async function initSystem() {
             if (USE_LOCAL_STORAGE_FALLBACK) {
-                console.log("未提供 Firebase Config，使用本地記憶體模式。");
+                updateConnectionStatus(false, '尚未填入 Firebase 設定');
                 initLocalData();
                 startApp();
             } else {
                 try {
-                    console.log("嘗試初始化 Firebase...");
                     app = initializeApp(firebaseConfig);
                     db = getFirestore(app);
                     auth = getAuth(app);
                     
-                    const userCredential = await signInAnonymously(auth);
-                    userId = userCredential.user.uid;
-                    console.log("Firebase 登入成功");
+                    await signInAnonymously(auth);
+                    
+                    // 權限探針
+                    const probeRef = doc(db, 'artifacts', appId, 'settings', 'probe');
+                    await setDoc(probeRef, { time: new Date() });
 
-                    // 【關鍵】權限探針：嘗試讀取一下資料庫，看 Firestore Rules 是否允許
-                    const probeRef = doc(db, 'artifacts', appId, '_probe_', 'data');
-                    await setDoc(probeRef, { time: new Date() }); // 測試寫入
-
-                    console.log("Firebase 讀寫權限測試通過！");
+                    updateConnectionStatus(true);
                     await fetchInitialFirebaseData();
                     startApp();
 
                 } catch (error) {
-                    console.log("Firebase 權限不足或連線失敗，自動切換至本機模式:", error.message);
-                    
-                    // 顯示右下角 Toast 提示取代 alert
+                    console.warn("Firebase 失敗:", error.message);
+                    updateConnectionStatus(false, '權限遭拒或設定錯誤');
                     const toast = document.getElementById('system-toast');
                     if(toast) {
                         toast.classList.remove('hidden');
-                        // 10秒後自動隱藏
-                        setTimeout(() => {
-                            toast.classList.add('hidden');
-                        }, 10000);
+                        setTimeout(() => toast.classList.add('hidden'), 10000);
                     }
-
                     USE_LOCAL_STORAGE_FALLBACK = true;
                     initLocalData();
                     startApp();
@@ -438,19 +424,31 @@
         }
 
         function initLocalData() {
-            // 確保每個班級都有初始分數結構
-            localState.classes.forEach(c => {
-                if (!localState.scores[c.id]) {
-                    localState.scores[c.id] = { 1:0, 2:0, 3:0, 4:0, 5:0 };
+            const saved = localStorage.getItem('classroom_score_app_data');
+            if (saved) localState = JSON.parse(saved);
+            else {
+                localState.classes.forEach(c => {
+                    if (!localState.scores[c.id]) localState.scores[c.id] = { 1:0, 2:0, 3:0, 4:0, 5:0 };
+                });
+                saveLocalData();
+            }
+            if(localState.classes.length > 0) selectedClassId = localState.classes[0].id;
+
+            window.addEventListener('storage', (e) => {
+                if (e.key === 'classroom_score_app_data') {
+                    localState = JSON.parse(e.newValue);
+                    if (selectedClassId) updateUIRender(localState.scores[selectedClassId] || {1:0, 2:0, 3:0, 4:0, 5:0});
+                    renderClassSelects();
+                    renderAdminLists();
                 }
             });
-            if(localState.classes.length > 0) {
-                selectedClassId = localState.classes[0].id;
-            }
+        }
+
+        function saveLocalData() {
+            localStorage.setItem('classroom_score_app_data', JSON.stringify(localState));
         }
 
         function startApp() {
-            // 綁定全域事件 (讓 HTML 中的 onclick 可以呼叫)
             window.switchView = switchView;
             window.addClass = addClass;
             window.addRule = addRule;
@@ -461,24 +459,10 @@
             window.submitScore = submitScore;
             window.resetScores = resetScores;
 
-            // 綁定 DOM 事件
-            document.getElementById('teacher-class-select').addEventListener('change', (e) => {
-                changeClass(e.target.value);
-                document.getElementById('display-class-select').value = e.target.value;
-                document.getElementById('reset-class-select').value = e.target.value;
-            });
-            document.getElementById('display-class-select').addEventListener('change', (e) => {
-                changeClass(e.target.value);
-                document.getElementById('teacher-class-select').value = e.target.value;
-                document.getElementById('reset-class-select').value = e.target.value;
-            });
-             document.getElementById('reset-class-select').addEventListener('change', (e) => {
-                 changeClass(e.target.value);
-                 document.getElementById('teacher-class-select').value = e.target.value;
-                 document.getElementById('display-class-select').value = e.target.value;
-             });
+            document.getElementById('teacher-class-select').addEventListener('change', (e) => changeClass(e.target.value));
+            document.getElementById('display-class-select').addEventListener('change', (e) => changeClass(e.target.value));
+            document.getElementById('reset-class-select').addEventListener('change', (e) => changeClass(e.target.value));
 
-            // 初始渲染
             renderClassSelects();
             renderAdminLists();
             renderModalRules();
@@ -490,13 +474,27 @@
                 listenToScores(selectedClassId);
             }
 
-            // 根據 URL 參數或預設切換視圖
+            // 【新功能】監聽全局「目前正在上課的班級」，讓電視自動切換
+            if (!USE_LOCAL_STORAGE_FALLBACK) {
+                const activeClassRef = doc(db, 'artifacts', appId, 'settings', 'activeClass');
+                unsubscribeActive = onSnapshot(activeClassRef, (docSnap) => {
+                    if (docSnap.exists()) {
+                        const globalClassId = docSnap.data().classId;
+                        if (globalClassId && globalClassId !== selectedClassId) {
+                            // 如果雲端的班級變了，本機也跟著變 (尤其適用於電視端)
+                            selectedClassId = globalClassId;
+                            document.getElementById('teacher-class-select').value = globalClassId;
+                            document.getElementById('display-class-select').value = globalClassId;
+                            document.getElementById('reset-class-select').value = globalClassId;
+                            listenToScores(globalClassId);
+                        }
+                    }
+                });
+            }
+
             switchView('teacher');
         }
 
-        // ==========================================
-        // 3. 資料存取邏輯 (分歧處理)
-        // ==========================================
         async function fetchInitialFirebaseData() {
             const classesCol = collection(db, 'artifacts', appId, 'classes');
             const rulesCol = collection(db, 'artifacts', appId, 'rules');
@@ -510,29 +508,33 @@
             let fetchedRules = [];
             ruleSnap.forEach(doc => { fetchedRules.push({ id: doc.id, ...doc.data() }); });
 
-            // 若 Firebase 全空，寫入預設值
             if (fetchedClasses.length === 0) {
-                console.log("Firebase 無資料，寫入預設值");
                 for (let c of localState.classes) {
                     await setDoc(doc(db, 'artifacts', appId, 'classes', c.id), { name: c.name });
                 }
                 for (let r of localState.rules) {
                     await setDoc(doc(db, 'artifacts', appId, 'rules', r.id), { name: r.name, score: r.score });
                 }
-                // 初始化預設班級的分數文件
                 await setDoc(doc(db, 'artifacts', appId, 'scores', localState.classes[0].id), { 1:0, 2:0, 3:0, 4:0, 5:0 });
+                // 設定初始活躍班級
+                await setDoc(doc(db, 'artifacts', appId, 'settings', 'activeClass'), { classId: localState.classes[0].id });
+                
                 fetchedClasses = localState.classes;
                 fetchedRules = localState.rules;
             }
 
             localState.classes = fetchedClasses;
             localState.rules = fetchedRules;
-            if(localState.classes.length > 0){
+            
+            // 嘗試讀取目前的活躍班級
+            const activeDoc = await getDoc(doc(db, 'artifacts', appId, 'settings', 'activeClass'));
+            if(activeDoc.exists() && activeDoc.data().classId) {
+                selectedClassId = activeDoc.data().classId;
+            } else if(localState.classes.length > 0){
                 selectedClassId = localState.classes[0].id;
             }
         }
 
-        // 監聽特定班級的分數
         function listenToScores(classId) {
             if (USE_LOCAL_STORAGE_FALLBACK) {
                 if(!localState.scores[classId]) localState.scores[classId] = {1:0, 2:0, 3:0, 4:0, 5:0};
@@ -540,67 +542,43 @@
                 return;
             }
 
-            // 移除舊的監聽器
-            if (unsubscribeScores) {
-                unsubscribeScores();
-            }
+            if (unsubscribeScores) unsubscribeScores();
 
             const scoreRef = doc(db, 'artifacts', appId, 'scores', classId);
             unsubscribeScores = onSnapshot(scoreRef, (docSnap) => {
                 if (docSnap.exists()) {
                     updateUIRender(docSnap.data());
                 } else {
-                    // 若文件不存在，創建一個全部為 0 的
                     setDoc(scoreRef, { 1:0, 2:0, 3:0, 4:0, 5:0 });
                     updateUIRender({ 1:0, 2:0, 3:0, 4:0, 5:0 });
                 }
-            }, (error) => {
-                console.warn("監聽分數狀態提示 (如發生權限改變，請重新整理):", error.message);
             });
         }
 
-        // 更新分數 (寫入)
         async function saveScore(classId, group, delta) {
             if (USE_LOCAL_STORAGE_FALLBACK) {
                 if(!localState.scores[classId]) localState.scores[classId] = {1:0, 2:0, 3:0, 4:0, 5:0};
                 localState.scores[classId][group] += delta;
+                saveLocalData();
                 updateUIRender(localState.scores[classId]);
                 return;
             }
 
             const scoreRef = doc(db, 'artifacts', appId, 'scores', classId);
             const docSnap = await getDoc(scoreRef);
-            
             if (docSnap.exists()) {
                 let currentScore = docSnap.data()[group] || 0;
-                await updateDoc(scoreRef, {
-                    [group]: currentScore + delta
-                });
+                await updateDoc(scoreRef, { [group]: currentScore + delta });
             }
         }
 
-        // 重置某班分數
-        async function performScoreReset(classId) {
-             if (USE_LOCAL_STORAGE_FALLBACK) {
-                localState.scores[classId] = {1:0, 2:0, 3:0, 4:0, 5:0};
-                if(selectedClassId === classId) updateUIRender(localState.scores[classId]);
-                return;
-            }
-            const scoreRef = doc(db, 'artifacts', appId, 'scores', classId);
-            await setDoc(scoreRef, { 1:0, 2:0, 3:0, 4:0, 5:0 });
-        }
-
-
         // ==========================================
-        // 4. UI 與互動邏輯
+        // UI 與互動邏輯
         // ==========================================
-        
-        // 切換視圖
         function switchView(viewName) {
             document.querySelectorAll('.view-section').forEach(el => el.classList.add('hidden'));
             document.getElementById(`view-${viewName}`).classList.remove('hidden');
             
-            // 更新導覽列按鈕狀態
             document.querySelectorAll('.nav-btn').forEach(btn => {
                 btn.classList.remove('text-teal-600', 'bg-teal-50');
                 btn.classList.add('text-gray-600');
@@ -608,10 +586,9 @@
             document.getElementById(`btn-${viewName}`).classList.add('text-teal-600', 'bg-teal-50');
             document.getElementById(`btn-${viewName}`).classList.remove('text-gray-600');
 
-            // 特殊處理：進入電視展示模式時隱藏導覽列
             if (viewName === 'display') {
                 document.getElementById('navbar').classList.add('hidden');
-                document.body.style.backgroundColor = '#000'; // 避免背景閃爍
+                document.body.style.backgroundColor = '#000';
             } else {
                 document.getElementById('navbar').classList.remove('hidden');
                 document.body.style.backgroundColor = '#f0fdfa';
@@ -619,16 +596,25 @@
             currentView = viewName;
         }
 
-        // 切換班級
-        function changeClass(classId) {
+        // 【新功能】切換班級時，同時更新雲端的「活躍班級」
+        async function changeClass(classId) {
             selectedClassId = classId;
+            
+            // 同步下拉選單顯示
+            document.getElementById('teacher-class-select').value = classId;
+            document.getElementById('display-class-select').value = classId;
+            document.getElementById('reset-class-select').value = classId;
+            
             listenToScores(classId);
+
+            // 更新到雲端，這樣電視端就會自動收到通知並切換
+            if (!USE_LOCAL_STORAGE_FALLBACK) {
+                await setDoc(doc(db, 'artifacts', appId, 'settings', 'activeClass'), { classId: classId });
+            }
         }
 
-        // 更新介面上的分數 (同步老師端與電視端)
         function updateUIRender(scoresObj) {
             let maxScore = -Infinity;
-            // 找出最高分
             for(let i=1; i<=5; i++) {
                 let score = scoresObj[i] || 0;
                 if(score > maxScore) maxScore = score;
@@ -637,37 +623,32 @@
             for(let i=1; i<=5; i++) {
                 let score = scoresObj[i] || 0;
                 
-                // 1. 更新老師操作端數字
                 const tEl = document.getElementById(`teacher-score-${i}`);
-                if(tEl.innerText != score) {
+                if(tEl && tEl.innerText != score) {
                     tEl.innerText = score;
                     animateScoreChange(tEl);
                 }
 
-                // 2. 更新電視展示端數字
                 const dEl = document.getElementById(`display-score-${i}`);
-                if(dEl.innerText != score) {
+                if(dEl && dEl.innerText != score) {
                     dEl.innerText = score;
                     animateScoreChange(dEl);
                 }
 
-                // 3. 處理皇冠與第一名樣式 (電視端)
                 const cardEl = document.getElementById(`display-card-${i}`);
-                if(score === maxScore && maxScore > 0) { // 大於0才有皇冠
-                    cardEl.classList.add('is-first');
-                } else {
-                    cardEl.classList.remove('is-first');
+                if(cardEl) {
+                    if(score === maxScore && maxScore > 0) cardEl.classList.add('is-first');
+                    else cardEl.classList.remove('is-first');
                 }
             }
         }
 
         function animateScoreChange(element) {
             element.classList.remove('score-changed');
-            void element.offsetWidth; // 觸發重繪
+            void element.offsetWidth;
             element.classList.add('score-changed');
         }
 
-        // 渲染班級下拉選單
         function renderClassSelects() {
             const selects = ['teacher-class-select', 'display-class-select', 'reset-class-select'];
             selects.forEach(id => {
@@ -682,9 +663,7 @@
             });
         }
 
-        // 渲染後台列表
         function renderAdminLists() {
-            // 班級列表
             const classListEl = document.getElementById('admin-class-list');
             classListEl.innerHTML = '';
             localState.classes.forEach(c => {
@@ -697,7 +676,6 @@
                 classListEl.appendChild(li);
             });
 
-            // 規則列表
             const ruleListEl = document.getElementById('admin-rule-list');
             ruleListEl.innerHTML = '';
             localState.rules.forEach(r => {
@@ -717,7 +695,6 @@
             });
         }
 
-        // 渲染 Modal 中的評分按鈕
         function renderModalRules() {
             const container = document.getElementById('modal-rules-container');
             container.innerHTML = '';
@@ -728,17 +705,16 @@
                 const sign = isPositive ? '+' : '';
                 
                 const btn = document.createElement('button');
-                btn.className = `flex flex-col items-center justify-center p-3 rounded-xl border border-gray-200 shadow-sm ${bgHover} transition`;
+                btn.className = `flex flex-col items-center justify-center p-4 rounded-2xl border border-gray-200 shadow-sm ${bgHover} transition`;
                 btn.onclick = () => submitScore(r.score);
                 btn.innerHTML = `
-                    <span class="text-sm font-bold text-gray-600 mb-1">${r.name}</span>
-                    <span class="text-2xl font-black ${textColor}">${sign}${r.score}</span>
+                    <span class="text-lg font-bold text-gray-600 mb-1">${r.name}</span>
+                    <span class="text-4xl font-black ${textColor}">${sign}${r.score}</span>
                 `;
                 container.appendChild(btn);
             });
         }
 
-        // 後台：新增班級
         async function addClass() {
             const input = document.getElementById('new-class-name');
             const name = input.value.trim();
@@ -749,29 +725,24 @@
             
             if (!USE_LOCAL_STORAGE_FALLBACK) {
                 await setDoc(doc(db, 'artifacts', appId, 'classes', newId), { name: name });
-                // 初始化分數結構
                 await setDoc(doc(db, 'artifacts', appId, 'scores', newId), { 1:0, 2:0, 3:0, 4:0, 5:0 });
             } else {
                 localState.scores[newId] = { 1:0, 2:0, 3:0, 4:0, 5:0 };
+                saveLocalData();
             }
 
             input.value = '';
             renderClassSelects();
             renderAdminLists();
             
-            // 如果是第一個班級，自動選取
-            if(localState.classes.length === 1) {
-                changeClass(newId);
-            }
+            if(localState.classes.length === 1) changeClass(newId);
         }
 
-        // 後台：新增規則
         async function addRule() {
             const nameInput = document.getElementById('new-rule-name');
             const scoreInput = document.getElementById('new-rule-score');
             const name = nameInput.value.trim();
             const score = parseInt(scoreInput.value);
-            
             if (!name || isNaN(score)) return;
 
             const newId = 'rule_' + Date.now();
@@ -779,7 +750,7 @@
 
             if (!USE_LOCAL_STORAGE_FALLBACK) {
                 await setDoc(doc(db, 'artifacts', appId, 'rules', newId), { name: name, score: score });
-            }
+            } else saveLocalData();
 
             nameInput.value = '';
             scoreInput.value = '1';
@@ -787,44 +758,40 @@
             renderModalRules();
         }
 
-        // 刪除班級
-        // 刪除班級
         async function deleteClass(id) {
             localState.classes = localState.classes.filter(c => c.id !== id);
+            if (!USE_LOCAL_STORAGE_FALLBACK) await deleteDoc(doc(db, 'artifacts', appId, 'classes', id));
+            else saveLocalData();
             
-            if (!USE_LOCAL_STORAGE_FALLBACK) {
-                import('https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js').then(async ({ deleteDoc }) => {
-                    await deleteDoc(doc(db, 'artifacts', appId, 'classes', id));
-                });
-            }
             renderClassSelects();
             renderAdminLists();
             if(selectedClassId === id) {
                 const nextId = localState.classes.length > 0 ? localState.classes[0].id : '';
-                document.getElementById('teacher-class-select').value = nextId;
-                changeClass(nextId);
+                if(nextId) changeClass(nextId);
             }
         }
 
-        // 刪除規則
         async function deleteRule(id) {
              localState.rules = localState.rules.filter(r => r.id !== id);
-             if (!USE_LOCAL_STORAGE_FALLBACK) {
-                import('https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js').then(async ({ deleteDoc }) => {
-                    await deleteDoc(doc(db, 'artifacts', appId, 'rules', id));
-                });
-            }
-            renderAdminLists();
-            renderModalRules();
+             if (!USE_LOCAL_STORAGE_FALLBACK) await deleteDoc(doc(db, 'artifacts', appId, 'rules', id));
+             else saveLocalData();
+             
+             renderAdminLists();
+             renderModalRules();
         }
         
-        // 分數歸零
-        function resetScores() {
+        async function resetScores() {
              const classId = document.getElementById('reset-class-select').value;
              if(!classId) return;
-             performScoreReset(classId);
              
-             // 簡單的視覺回饋
+             if (USE_LOCAL_STORAGE_FALLBACK) {
+                localState.scores[classId] = {1:0, 2:0, 3:0, 4:0, 5:0};
+                saveLocalData();
+                if(selectedClassId === classId) updateUIRender(localState.scores[classId]);
+            } else {
+                await setDoc(doc(db, 'artifacts', appId, 'scores', classId), { 1:0, 2:0, 3:0, 4:0, 5:0 });
+            }
+             
              const btn = document.querySelector('button[onclick="resetScores()"]');
              const originalText = btn.innerText;
              btn.innerText = "已歸零！";
@@ -837,44 +804,31 @@
              }, 1000);
         }
 
-        // 開啟評分 Modal
         function openScoreModal(groupNum) {
             targetGroupNum = groupNum;
             document.getElementById('modal-group-num').innerText = groupNum;
-            
             const modal = document.getElementById('score-modal');
             const content = document.getElementById('score-modal-content');
-            
             modal.classList.remove('hidden');
-            // 小延遲以觸發動畫
-            setTimeout(() => {
-                content.classList.remove('translate-y-full');
-            }, 10);
+            setTimeout(() => content.classList.remove('translate-y-full'), 10);
         }
 
-        // 關閉評分 Modal
         function closeScoreModal() {
             const modal = document.getElementById('score-modal');
             const content = document.getElementById('score-modal-content');
-            
             content.classList.add('translate-y-full');
             setTimeout(() => {
                 modal.classList.add('hidden');
                 targetGroupNum = null;
-            }, 300); // 等待動畫結束
+            }, 300);
         }
 
-        // 點擊分數按鈕提交
         function submitScore(delta) {
-            if (targetGroupNum && selectedClassId) {
-                saveScore(selectedClassId, targetGroupNum, delta);
-            }
+            if (targetGroupNum && selectedClassId) saveScore(selectedClassId, targetGroupNum, delta);
             closeScoreModal();
         }
 
-        // 啟動系統
         initSystem();
-
     </script>
 </body>
 </html>
